@@ -7,21 +7,24 @@ import {
   BadgeCheck, CreditCard, Globe, Eye, ArrowUpRight, CheckCircle2,
   Clock, Landmark, ChevronRight, Link as LinkIcon
 } from 'lucide-react';
+import { useNavigate, useParams } from 'react-router-dom'; // <--- NEW
 import { ethers } from 'ethers';
-import { AreaChart, Area, XAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { toast } from 'sonner';
 
-const CONTRACT_ADDRESS = "0xYourContractAddressHere"; 
-const VENDORGUARD_ABI = [
-  "function balances(address) view returns (uint256)",
-  "function getLockedFunds(address) view returns (uint256)",
-  "function withdrawFunds() public"
-];
-
 const MerchantDashboard = () => {
-  const [activeTab, setActiveTab] = useState('Overview');
+  // --- ROUTING HOOKS ---
+  const navigate = useNavigate();
+  const { tabId } = useParams();
+
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const fileInputRef = useRef(null);
+
+  // --- ROUTING LOGIC (Maps URL to your existing tab logic) ---
+  const activeTab = useMemo(() => {
+    if (!tabId) return 'Overview';
+    // Capitalizes the first letter (e.g., 'settings' becomes 'Settings')
+    return tabId.charAt(0).toUpperCase() + tabId.slice(1);
+  }, [tabId]);
 
   // Core Data
   const [isVerified, setIsVerified] = useState(false);
@@ -44,56 +47,39 @@ const MerchantDashboard = () => {
   const [lockDuration, setLockDuration] = useState('24');
   const [profileImage, setProfileImage] = useState(null);
   const [autoSettle, setAutoSettle] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
 
-  // --- WALLET CONNECT LOGIC ---
+  // --- WALLET CONNECT LOGIC (Unchanged) ---
   const connectAuditWallet = async () => {
     if (typeof window.ethereum !== 'undefined') {
       try {
         const provider = new ethers.BrowserProvider(window.ethereum);
         const accounts = await provider.send("eth_requestAccounts", []);
-        
         if (accounts.length > 0) {
           const address = accounts[0];
           setWalletAddress(address);
           setIsVerified(true);
-          
           const currentSettings = JSON.parse(localStorage.getItem('merchantSettings') || '{}');
-          localStorage.setItem('merchantSettings', JSON.stringify({
-            ...currentSettings,
-            walletAddress: address
-          }));
-
+          localStorage.setItem('merchantSettings', JSON.stringify({ ...currentSettings, walletAddress: address }));
           toast.success("Audit address linked successfully");
         }
       } catch (err) {
-        if (err.code === 4001) {
-          toast.error("Connection request denied by user");
-        } else {
-          toast.error("Failed to connect wallet");
-          console.error(err);
-        }
+        toast.error(err.code === 4001 ? "Connection denied" : "Failed to connect");
       }
     } else {
-      toast.error("Please install MetaMask or a Web3 Wallet");
+      toast.error("Please install MetaMask");
     }
   };
 
-  // --- NEW DISCONNECT LOGIC ---
   const disconnectWallet = () => {
     setWalletAddress('');
     setIsVerified(false);
-    
-    // Clear from storage
     const currentSettings = JSON.parse(localStorage.getItem('merchantSettings') || '{}');
     const updatedSettings = { ...currentSettings };
     delete updatedSettings.walletAddress;
     localStorage.setItem('merchantSettings', JSON.stringify(updatedSettings));
-    
     toast.info("Wallet session cleared locally");
   };
 
-  // Listen for Account Changes
   useEffect(() => {
     if (window.ethereum) {
       window.ethereum.on('accountsChanged', (accounts) => {
@@ -108,7 +94,7 @@ const MerchantDashboard = () => {
     }
   }, []);
 
-  // --- IMAGE UPLOAD ---
+  // --- IMAGE UPLOAD (Unchanged) ---
   const handleImageUpload = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -122,7 +108,7 @@ const MerchantDashboard = () => {
     }
   };
 
-  // --- ACTIONS ---
+  // --- ACTIONS (Unchanged) ---
   const handleCreateLink = (e) => {
     e.preventDefault();
     const randomId = Math.random().toString(36).substring(7);
@@ -173,12 +159,17 @@ const MerchantDashboard = () => {
           </div>
           <nav className="space-y-2 flex-1">
             {[
-              { icon: LayoutDashboard, label: 'Overview' },
-              { icon: History, label: 'Transactions' },
-              { icon: Wallet, label: 'Payouts' },
-              { icon: Settings, label: 'Settings' },
+              { icon: LayoutDashboard, label: 'Overview', path: '/overview' },
+              { icon: History, label: 'Transactions', path: '/transactions' },
+              { icon: Wallet, label: 'Payouts', path: '/payouts' },
+              { icon: Settings, label: 'Settings', path: '/settings' },
             ].map((item) => (
-              <button key={item.label} onClick={() => { setActiveTab(item.label); setIsSidebarOpen(false); }}
+              <button 
+                key={item.label} 
+                onClick={() => { 
+                  navigate(item.path); // <--- Updated to use Navigate
+                  setIsSidebarOpen(false); 
+                }}
                 className={`w-full flex items-center gap-4 px-4 py-4 rounded-2xl transition-all ${activeTab === item.label ? 'bg-blue-600/10 text-blue-400 border border-blue-500/20' : 'text-slate-500 hover:bg-white/5 hover:text-slate-200'}`}>
                 <item.icon size={20} />
                 <span className="text-sm font-bold tracking-wide">{item.label}</span>
@@ -316,16 +307,13 @@ const MerchantDashboard = () => {
           {/* SETTINGS TAB */}
           {activeTab === 'Settings' && (
             <div className="space-y-8 animate-in slide-in-from-bottom-4">
-               {/* Profile Header */}
                <div className="bg-gradient-to-br from-[#15181e] to-[#0f1115] p-10 rounded-[3rem] border border-white/5 flex flex-col md:flex-row items-center gap-10">
                   <div className="relative group">
                     <div className="w-32 h-32 rounded-[2.5rem] bg-black/40 border-2 border-white/5 overflow-hidden flex items-center justify-center relative">
                       {profileImage ? <img src={profileImage} className="w-full h-full object-cover" alt="Profile" /> : <User size={40} className="text-slate-700" />}
                     </div>
                     <input type="file" ref={fileInputRef} onChange={handleImageUpload} className="hidden" accept="image/*" />
-                    <button 
-                      onClick={() => fileInputRef.current.click()}
-                      className="absolute -bottom-2 -right-2 bg-blue-600 p-3 rounded-2xl shadow-xl hover:scale-110 transition-transform z-20">
+                    <button onClick={() => fileInputRef.current.click()} className="absolute -bottom-2 -right-2 bg-blue-600 p-3 rounded-2xl shadow-xl hover:scale-110 transition-transform z-20">
                       <Camera size={18} className="text-white" />
                     </button>
                   </div>
@@ -352,26 +340,17 @@ const MerchantDashboard = () => {
                            <div className="space-y-3">
                               <label className="text-[10px] font-black text-slate-500 uppercase ml-2">Audit Address</label>
                               <div className="flex gap-2">
-                                <div 
-                                  onClick={!walletAddress ? connectAuditWallet : null}
-                                  className={`flex-1 p-5 bg-black/40 border rounded-2xl text-[10px] font-mono truncate transition-all flex justify-between items-center group ${walletAddress ? 'border-emerald-500/30 text-emerald-500' : 'border-white/5 text-slate-500 cursor-pointer hover:border-blue-500/50'}`}>
+                                <div onClick={!walletAddress ? connectAuditWallet : null} className={`flex-1 p-5 bg-black/40 border rounded-2xl text-[10px] font-mono truncate transition-all flex justify-between items-center group ${walletAddress ? 'border-emerald-500/30 text-emerald-500' : 'border-white/5 text-slate-500 cursor-pointer hover:border-blue-500/50'}`}>
                                   <span>{walletAddress || 'CLICK TO CONNECT WALLET'}</span>
                                   <Fingerprint size={14} className={`${walletAddress ? 'text-emerald-500' : 'group-hover:text-blue-400'} transition-colors`} />
                                 </div>
-                                
                                 {walletAddress && (
-                                  <button 
-                                    onClick={disconnectWallet}
-                                    title="Disconnect Wallet"
-                                    className="p-5 bg-red-500/10 border border-red-500/20 rounded-2xl text-red-500 hover:bg-red-500 hover:text-white transition-all">
-                                    <X size={16} />
-                                  </button>
+                                  <button onClick={disconnectWallet} className="p-5 bg-red-500/10 border border-red-500/20 rounded-2xl text-red-500 hover:bg-red-500 hover:text-white transition-all"><X size={16} /></button>
                                 )}
                               </div>
                            </div>
                         </div>
                      </div>
-
                      <div className="bg-[#0f1115] p-8 rounded-[3rem] border border-white/5 space-y-8">
                         <h3 className="text-xs font-black uppercase tracking-widest text-slate-400 flex items-center gap-2"><Lock size={16} /> Protocol Logic</h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -388,7 +367,6 @@ const MerchantDashboard = () => {
                         </div>
                      </div>
                   </div>
-
                   <div className="space-y-8">
                      <div className="bg-[#0f1115] border border-white/5 p-8 rounded-[3rem] space-y-8">
                         <div className="flex justify-between items-end">
@@ -406,15 +384,7 @@ const MerchantDashboard = () => {
                               </div>
                            </div>
                         </div>
-                        <button 
-                          onClick={() => {
-                            const settings = { companyName, walletAddress, lockDuration, autoSettle };
-                            localStorage.setItem('merchantSettings', JSON.stringify(settings));
-                            toast.success("Configuration Secured");
-                          }} 
-                          className="w-full bg-white text-blue-900 py-5 rounded-2xl font-black uppercase text-xs tracking-[0.2em] shadow-2xl hover:bg-slate-100 active:scale-95 transition-all">
-                          Save Settings
-                        </button>
+                        <button onClick={() => { localStorage.setItem('merchantSettings', JSON.stringify({ companyName, walletAddress, lockDuration, autoSettle })); toast.success("Configuration Secured"); }} className="w-full bg-white text-blue-900 py-5 rounded-2xl font-black uppercase text-xs tracking-[0.2em] shadow-2xl hover:bg-slate-100 active:scale-95 transition-all">Save Settings</button>
                      </div>
                   </div>
                </div>

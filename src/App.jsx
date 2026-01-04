@@ -11,7 +11,7 @@ const SuccessPage = () => {
   const location = useLocation();
   const queryParams = new URLSearchParams(location.search);
   
-  // Data extraction from URL params (matches the logic in MerchantDashboard)
+  // Data extraction from URL params
   const amount = queryParams.get('amount') || "0.00";
   const item = queryParams.get('item') || "Secure Deal";
   const txHash = queryParams.get('tx') || "0x" + Math.random().toString(16).substr(2, 32).toUpperCase();
@@ -26,10 +26,8 @@ const SuccessPage = () => {
       </div>
 
       <div className="max-w-md w-full bg-[#0f1115] border border-white/5 rounded-[3rem] p-10 text-center shadow-2xl relative overflow-hidden animate-in fade-in zoom-in-95 duration-500">
-        {/* Animated Top Border */}
         <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-emerald-500 to-blue-500"></div>
         
-        {/* Success Icon with Glow */}
         <div className="w-24 h-24 bg-emerald-500/10 border border-emerald-500/20 rounded-full flex items-center justify-center mx-auto mb-6 shadow-[0_0_50px_rgba(16,185,129,0.15)] relative">
           <div className="absolute inset-0 bg-emerald-500/20 blur-2xl rounded-full animate-pulse"></div>
           <CheckCircle2 size={48} className="text-emerald-500 relative z-10" />
@@ -40,7 +38,6 @@ const SuccessPage = () => {
           TX: {txHash.slice(0, 12)}...
         </p>
         
-        {/* Transaction Summary Box */}
         <div className="bg-gradient-to-b from-white/5 to-transparent rounded-[2.5rem] p-8 mb-8 border border-white/5 shadow-inner">
           <p className="text-[10px] text-blue-400 uppercase font-black tracking-widest mb-2">{item}</p>
           <div className="flex items-baseline justify-center gap-1">
@@ -49,7 +46,6 @@ const SuccessPage = () => {
           </div>
         </div>
 
-        {/* Action Buttons */}
         <div className="grid grid-cols-2 gap-4 mb-8">
           <button className="flex items-center justify-center gap-2 bg-white/5 hover:bg-white/10 p-4 rounded-2xl text-[10px] font-black uppercase transition-all border border-white/5 active:scale-95">
             <Download size={16} className="text-blue-500" /> Receipt
@@ -59,13 +55,11 @@ const SuccessPage = () => {
           </button>
         </div>
 
-        {/* Return Link */}
         <Link to="/" className="flex items-center justify-center gap-2 text-slate-500 hover:text-white font-black text-[10px] uppercase tracking-[0.3em] transition-all group">
           Back to Terminal <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
         </Link>
       </div>
 
-      {/* Trust Footer */}
       <div className="mt-8 flex items-center gap-2 text-[9px] font-black text-slate-600 uppercase tracking-widest">
         <span>Verified by Base L2</span>
         <div className="w-1 h-1 bg-slate-700 rounded-full"></div>
@@ -78,7 +72,6 @@ const SuccessPage = () => {
 function App() {
   return (
     <Router>
-      {/* Global Toaster with Custom Styling */}
       <Toaster 
         position="top-right" 
         theme="dark" 
@@ -95,14 +88,16 @@ function App() {
       />
       
       <Routes>
-        <Route path="/" element={<MerchantDashboard />} />
+        {/* UPDATED ROUTE: Captures tabs like /settings or /overview */}
+        <Route path="/:tabId?" element={<MerchantDashboard />} />
         
-        {/* This route captures the ID and allows PaymentPage to read URL params */}
+        {/* Payment route */}
         <Route path="/pay/:id" element={<PaymentPage />} />
         
+        {/* Success route */}
         <Route path="/success" element={<SuccessPage />} />
         
-        {/* Wildcard Catch-all */}
+        {/* Catch-all */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Router>
